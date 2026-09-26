@@ -3,11 +3,15 @@ cargador_afnd.py
 ----------------
 Funcionalidad 1 de la Fase 2: carga y creación de un AFND.
 
-Es el equivalente de cargador.py (Fase 1) pero para autómatas donde un
+Es igual que cargador.py (Fase 1) pero para autómatas donde un
 mismo par (estado, símbolo) puede tener cero, uno o varios destinos. Se
 reutilizan de cargador.py las piezas que no dependen de esa diferencia
 (separar listas, pedir conjuntos, normalizar rutas de archivo, patrón de
 identificador, símbolos épsilon prohibidos) en vez de duplicarlas.
+
+Se hizo de esta forma para que fuera mas facil de modelarlo debidoa  que 
+en este caso es dificil poder hacerlo dado que tiene uno o varios estados por
+eso se tomo la desicion de hacer otro .py para que fuera mas facil
 """
 
 import re
@@ -28,6 +32,8 @@ from colores import titulo, info, exito, error
 # de cabecera (NOMBRE, ESTADOS, ALFABETO, INICIAL, FINALES) es idéntico al
 # del AFD; solo cambia la línea de transición, cuyo destino puede traer
 # varios estados separados por "|", o el símbolo ∅ para "sin destino".
+#Se hizo de esta forma porque hay algunos simbolos que podrian entrar que 
+#podrian llegar a estar mal
 # ---------------------------------------------------------------------------
 PATRON_NOMBRE = re.compile(r'^NOMBRE=(.+)$')
 PATRON_TIPO = re.compile(r'^TIPO=(.+)$')
@@ -146,7 +152,8 @@ def _pedir_transiciones_afnd(Q, sigma):
 def cargar_afnd_desde_archivo(ruta):
     """
     Lee y parsea un archivo de definición de AFND (ver formato en el
-    enunciado de la Fase 2). Igual que cargar_afd_desde_archivo, nunca
+    enunciado de la Fase 2). Este formato lo dio el ingeniero
+    Igual que cargar_afd_desde_archivo, nunca
     lanza una excepción por un archivo mal formado: acumula errores y
     sigue leyendo.
 

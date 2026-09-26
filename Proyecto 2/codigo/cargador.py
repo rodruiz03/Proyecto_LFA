@@ -1,11 +1,11 @@
 """
 cargador.py
 -----------
-Funcionalidad 1: Carga del AFD.
+Funcionalidad 1: Carga del AFD, no se actualiza al final se crea otro .py
 
 Contiene dos formas de construir un objeto AFD:
-  1. crear_afd_manual()         -> ingreso interactivo por consola.
-  2. cargar_afd_desde_archivo() -> lectura y parseo de un archivo .txt
+  1. crear_afd_manual()          ingreso interactivo por consola.
+  2. cargar_afd_desde_archivo()  lectura y parseo de un archivo .txt
                                     usando expresiones regulares.
 
 Este módulo NO valida las propiedades teóricas del autómata (eso es

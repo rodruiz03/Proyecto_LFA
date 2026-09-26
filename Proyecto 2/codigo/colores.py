@@ -12,6 +12,9 @@ operativo. Esto se logra con el truco estándar `os.system("")`, que fuerza
 a Windows a habilitar el procesamiento de estas secuencias sin necesidad de
 ninguna biblioteca adicional. Se ejecuta una sola vez, al importar este
 módulo.
+
+Fue la forma mas facil de ponerle color y que fuera modular para despues
+porque tambien se exploro hacerlo en cada archivo pero era mas engorroso
 """
 
 import os

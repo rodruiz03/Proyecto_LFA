@@ -9,7 +9,8 @@ qué módulo invocar según la opción elegida y controla las reglas de acceso
 entre opciones. No contiene lógica de carga, validación, conversión ni
 simulación: esas responsabilidades siguen separadas en cargador.py /
 cargador_afnd.py, validador.py / validador_afnd.py, conversor.py y
-simulador.py, tal como exige el enunciado del proyecto.
+simulador.py, tal como exige el enunciado del proyecto poruqe piden cierta 
+modularidad de que existan de minimo 6 archivos para las actualizaciones
 
 Fase 2 — evoluciona el programa de la Fase 1 sin eliminar ninguna de sus
 funciones: un AFD creado o cargado directamente (opciones 1-2) sigue

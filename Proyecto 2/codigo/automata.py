@@ -4,6 +4,7 @@ automata.py
 Define las estructuras de datos que representan los autómatas del proyecto:
 
   - AFD  (Fase 1): Autómata Finito Determinista.
+  añadimos las partes del proyecto 2
   - AFND (Fase 2): Autómata Finito No Determinista.
 
 Ambos comparten la misma quíntupla formal:
@@ -75,6 +76,8 @@ class AFND:
     """
     Representa la quíntupla M = (Q, Sigma, delta, q0, F) de un Autómata
     Finito No Determinista (Fase 2).
+    En este caso se cambio para que fuera mas sensillo inge ademas como tiene diferentes partes
+    es necesario cambiarlo
 
     Atributos
     ---------
