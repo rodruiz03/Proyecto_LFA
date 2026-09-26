@@ -1,0 +1,10 @@
+NOMBRE=AFD_Malo
+ESTADOS=q0,q1,q1
+ALFABETO=a,b,ε
+INICIAL=q0
+FINALES=q9
+esto no es una linea valida
+TRANSICIONES:
+q0,a,q1
+q0,a,q0
+q1,b
