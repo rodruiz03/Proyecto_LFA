@@ -235,6 +235,25 @@ def cargar_afd_desde_archivo(ruta):
     delta = {}
     dentro_de_transiciones = False
     transiciones_vistas = set()  # detecta (origen, simbolo) repetidos -> AFND
+    campos_vistos = set()  # detecta NOMBRE/ESTADOS/ALFABETO/INICIAL/FINALES repetidos
+
+    def _es_declaracion_nueva(campo, numero_linea):
+        """
+        Registra que `campo` (p. ej. 'ESTADOS') se declaró en `numero_linea`.
+        Si ya se había declarado antes en el archivo, agrega un error y
+        devuelve False: la segunda declaración se descarta en vez de
+        sobreescribir la primera en silencio, porque un archivo con el
+        mismo componente definido dos veces de forma distinta es
+        estructuralmente inconsistente, no simplemente redundante.
+        """
+        if campo in campos_vistos:
+            errores.append(
+                f"Línea {numero_linea}: '{campo}' ya se había declarado antes "
+                f"en el archivo; se ignora esta repetición (archivo inconsistente)."
+            )
+            return False
+        campos_vistos.add(campo)
+        return True
 
     for numero_linea, linea_cruda in enumerate(lineas, start=1):
         linea = linea_cruda.strip()
@@ -267,48 +286,53 @@ def cargar_afd_desde_archivo(ruta):
         # --- Secciones de la cabecera (NOMBRE, ESTADOS, ...) ------------
         m = PATRON_NOMBRE.match(linea)
         if m:
-            nombre = m.group(1).strip()
+            if _es_declaracion_nueva('NOMBRE', numero_linea):
+                nombre = m.group(1).strip()
             continue
 
         m = PATRON_ESTADOS.match(linea)
         if m:
-            elementos = _separar_lista(m.group(1))
-            if len(elementos) != len(set(elementos)):
-                errores.append(f"Línea {numero_linea}: ESTADOS contiene elementos duplicados.")
-            invalidos = [e for e in elementos if not PATRON_IDENTIFICADOR.match(e)]
-            if invalidos:
-                errores.append(f"Línea {numero_linea}: nombres de estado inválidos: {invalidos}.")
-            Q = set(elementos)
+            if _es_declaracion_nueva('ESTADOS', numero_linea):
+                elementos = _separar_lista(m.group(1))
+                if len(elementos) != len(set(elementos)):
+                    errores.append(f"Línea {numero_linea}: ESTADOS contiene elementos duplicados.")
+                invalidos = [e for e in elementos if not PATRON_IDENTIFICADOR.match(e)]
+                if invalidos:
+                    errores.append(f"Línea {numero_linea}: nombres de estado inválidos: {invalidos}.")
+                Q = set(elementos)
             continue
 
         m = PATRON_ALFABETO.match(linea)
         if m:
-            elementos = _separar_lista(m.group(1))
-            if len(elementos) != len(set(elementos)):
-                errores.append(f"Línea {numero_linea}: ALFABETO contiene símbolos duplicados.")
-            if any(s in SIMBOLOS_PROHIBIDOS for s in elementos):
-                errores.append(f"Línea {numero_linea}: el símbolo épsilon (ε) no está permitido en el alfabeto.")
-            # Se excluye epsilon del alfabeto aunque el usuario lo haya
-            # escrito: ya se reportó como error, y un AFD nunca puede tener
-            # epsilon como símbolo válido de Sigma.
-            sigma = set(s for s in elementos if s not in SIMBOLOS_PROHIBIDOS)
+            if _es_declaracion_nueva('ALFABETO', numero_linea):
+                elementos = _separar_lista(m.group(1))
+                if len(elementos) != len(set(elementos)):
+                    errores.append(f"Línea {numero_linea}: ALFABETO contiene símbolos duplicados.")
+                if any(s in SIMBOLOS_PROHIBIDOS for s in elementos):
+                    errores.append(f"Línea {numero_linea}: el símbolo épsilon (ε) no está permitido en el alfabeto.")
+                # Se excluye epsilon del alfabeto aunque el usuario lo haya
+                # escrito: ya se reportó como error, y un AFD nunca puede tener
+                # epsilon como símbolo válido de Sigma.
+                sigma = set(s for s in elementos if s not in SIMBOLOS_PROHIBIDOS)
             continue
 
         m = PATRON_INICIAL.match(linea)
         if m:
-            valor = m.group(1).strip()
-            if not PATRON_IDENTIFICADOR.match(valor):
-                errores.append(f"Línea {numero_linea}: INICIAL contiene un valor inválido -> '{valor}'.")
-            q0 = valor
+            if _es_declaracion_nueva('INICIAL', numero_linea):
+                valor = m.group(1).strip()
+                if not PATRON_IDENTIFICADOR.match(valor):
+                    errores.append(f"Línea {numero_linea}: INICIAL contiene un valor inválido -> '{valor}'.")
+                q0 = valor
             continue
 
         m = PATRON_FINALES.match(linea)
         if m:
-            elementos = _separar_lista(m.group(1))
-            invalidos = [e for e in elementos if not PATRON_IDENTIFICADOR.match(e)]
-            if invalidos:
-                errores.append(f"Línea {numero_linea}: nombres de estado final inválidos: {invalidos}.")
-            F = set(elementos)
+            if _es_declaracion_nueva('FINALES', numero_linea):
+                elementos = _separar_lista(m.group(1))
+                invalidos = [e for e in elementos if not PATRON_IDENTIFICADOR.match(e)]
+                if invalidos:
+                    errores.append(f"Línea {numero_linea}: nombres de estado final inválidos: {invalidos}.")
+                F = set(elementos)
             continue
 
         if PATRON_ENCABEZADO_TRANSICIONES.match(linea):

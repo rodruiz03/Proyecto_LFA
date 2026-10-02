@@ -148,6 +148,7 @@ class RegistroHistorial:
     cadena: str
     veredicto: str
     traza: list
+    motivo: str
     automata: str
 
 
@@ -166,17 +167,21 @@ class Historial:
 
     def agregar(self, afd, resultado):
         """Agrega el ResultadoEvaluacion de simulador.py al historial,
-        junto con el nombre del autómata que se usó para obtenerlo."""
+        junto con el nombre del autómata que se usó para obtenerlo. Se
+        conserva la traza completa (y el motivo de rechazo, si lo hay)
+        para que la opción 12 pueda mostrarla, no solo el veredicto final."""
         self._registros.append(RegistroHistorial(
             cadena=resultado.cadena,
             veredicto=resultado.veredicto,
             traza=resultado.traza,
+            motivo=resultado.motivo,
             automata=afd.nombre,
         ))
 
     def mostrar(self):
         """Opción 12: lista las cadenas evaluadas contra el autómata
-        actualmente cargado."""
+        actualmente cargado, con la traza paso a paso de cada una (no solo
+        el veredicto), igual que se vio al momento de evaluarlas."""
         if not self._registros:
             print(info("\nAún no se ha evaluado ninguna cadena con el autómata actual."))
             return
@@ -188,6 +193,12 @@ class Historial:
             else:
                 resultado_coloreado = error(registro.veredicto)
             print(f"  {i}. [{registro.automata}] \"{cadena_mostrar}\" -> {resultado_coloreado}")
+            if not registro.traza:
+                print("       (no se procesó ningún símbolo)")
+            for paso in registro.traza:
+                print(f"       δ({paso.estado_origen}, {paso.simbolo}) = {paso.estado_destino}")
+            if registro.motivo:
+                print(f"       Motivo: {registro.motivo}")
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +224,15 @@ def accion_cargar_archivo():
         print(error("No se pudo construir el AFD: faltan componentes obligatorios en el archivo."))
         return None
 
-    print(exito(f"\nAFD '{afd.nombre}' cargado. Recuerda validarlo (opción 6) antes de evaluar cadenas."))
+    if errores:
+        print(advertencia(
+            f"\nAFD '{afd.nombre}' construido de forma PARCIAL: las líneas con "
+            f"error se descartaron. No se considera un autómata confiable hasta "
+            f"que corrijas el archivo y lo vuelvas a cargar, o lo valides (opción "
+            f"6) y revises con cuidado el resultado."
+        ))
+    else:
+        print(exito(f"\nAFD '{afd.nombre}' cargado. Recuerda validarlo (opción 6) antes de evaluar cadenas."))
     return afd
 
 
@@ -236,7 +255,15 @@ def accion_cargar_archivo_afnd():
         print(error("No se pudo construir el AFND: faltan componentes obligatorios en el archivo."))
         return None
 
-    print(exito(f"\nAFND '{afnd.nombre}' cargado. Recuerda validarlo (opción 6) y luego convertirlo (opción 7)."))
+    if errores:
+        print(advertencia(
+            f"\nAFND '{afnd.nombre}' construido de forma PARCIAL: las líneas con "
+            f"error se descartaron. No se considera un autómata confiable hasta "
+            f"que corrijas el archivo y lo vuelvas a cargar, o lo valides (opción "
+            f"6) y revises con cuidado el resultado."
+        ))
+    else:
+        print(exito(f"\nAFND '{afnd.nombre}' cargado. Recuerda validarlo (opción 6) y luego convertirlo (opción 7)."))
     return afnd
 
 
