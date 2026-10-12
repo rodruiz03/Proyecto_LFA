@@ -45,3 +45,7 @@ def validar_estructura_afnd(afnd):
             )
 
     return errores
+
+#Se creo al final mejor otro archivo .py para nomas llamarlo al main mas que nada
+#Por simpleza y para que puedieramos reciclar codigo de validador
+#ademas del cambio de estructura
