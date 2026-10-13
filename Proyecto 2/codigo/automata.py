@@ -4,8 +4,7 @@ automata.py
 Define las estructuras de datos que representan los autómatas del proyecto:
 
   - AFD  (Fase 1): Autómata Finito Determinista.
-  añadimos las partes del proyecto 2
-  - AFND (Fase 2): Autómata Finito No Determinista.
+  - AFND (Fase 2): Autómata Finito No Determinista, agregado en esta fase.
 
 Ambos comparten la misma quíntupla formal:
 
@@ -46,6 +45,11 @@ class AFD:
     validado : bool
         True únicamente después de que el AFD pasó el motor de validación
         (Funcionalidad 2) sin errores y sin transiciones faltantes.
+    errores_carga : list[str]
+        Errores encontrados al leer el archivo de origen (vacía si se creó
+        manualmente o si el archivo no tenía errores). Un autómata con
+        errores de carga se construyó de forma parcial y nunca puede
+        marcarse como validado.
     """
 
     def __init__(self, nombre, Q, sigma, delta, q0, F):
@@ -56,6 +60,7 @@ class AFD:
         self.q0 = q0
         self.F = set(F)
         self.validado = False
+        self.errores_carga = []
 
     def transicion(self, estado, simbolo):
         """
@@ -76,8 +81,11 @@ class AFND:
     """
     Representa la quíntupla M = (Q, Sigma, delta, q0, F) de un Autómata
     Finito No Determinista (Fase 2).
-    En este caso se cambio para que fuera mas sensillo inge ademas como tiene diferentes partes
-    es necesario cambiarlo
+
+    Se definió como una clase separada de AFD, en lugar de reutilizar la
+    misma, porque el tipo de dato de delta es distinto (conjunto de
+    destinos en vez de un único destino) y así cada clase deja explícito
+    qué representa.
 
     Atributos
     ---------
@@ -99,6 +107,8 @@ class AFND:
     validado : bool
         True únicamente después de que el AFND pasó el motor de validación
         (validador_afnd.py) sin errores.
+    errores_carga : list[str]
+        Igual que en AFD: errores de lectura del archivo de origen.
     """
 
     def __init__(self, nombre, Q, sigma, delta, q0, F):
@@ -112,6 +122,7 @@ class AFND:
         self.q0 = q0
         self.F = set(F)
         self.validado = False
+        self.errores_carga = []
 
     def transicion(self, estado, simbolo):
         """

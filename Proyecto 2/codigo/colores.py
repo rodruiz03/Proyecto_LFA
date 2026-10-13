@@ -13,8 +13,8 @@ a Windows a habilitar el procesamiento de estas secuencias sin necesidad de
 ninguna biblioteca adicional. Se ejecuta una sola vez, al importar este
 módulo.
 
-Fue la forma mas facil de ponerle color y que fuera modular para despues
-porque tambien se exploro hacerlo en cada archivo pero era mas engorroso
+Se centralizó en un solo módulo para no repetir los códigos de color en
+cada archivo del proyecto.
 """
 
 import os

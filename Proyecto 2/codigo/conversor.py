@@ -57,9 +57,10 @@ def construir_afd_desde_afnd(afnd):
     (que debe estar ya validado por validador_afnd.validar_estructura_afnd).
 
     Devuelve la tupla (afd_generado, tabla_equivalencias):
-      - afd_generado: instancia de AFD (la misma clase de la Fase 1), ya
-        marcada como validado=True, porque por construcción es completo y
-        determinista.
+      - afd_generado: instancia de AFD (la misma clase de la Fase 1). Por
+        construcción es completo y determinista, pero NO se marca como
+        validado aquí: main.py lo pasa por validador.validar_estructura
+        (el mismo motor de la Fase 1) para comprobarlo explícitamente.
       - tabla_equivalencias: dict[etiqueta_macroestado] -> frozenset de
         estados del AFND que representa, en el orden en que se
         descubrieron (empezando por el estado inicial {q0}).
@@ -100,9 +101,6 @@ def construir_afd_desde_afnd(afnd):
         q0=etiquetas[macroestado_inicial],
         F=F_afd,
     )
-    # El AFD generado es completo y determinista por construcción: cada
-    # macroestado tiene exactamente un destino por símbolo.
-    afd_generado.validado = True
 
     tabla_equivalencias = {
         etiquetas[subconjunto]: subconjunto for subconjunto in orden_descubrimiento

@@ -7,11 +7,18 @@ Procesa una cadena de entrada símbolo a símbolo, aplicando la función de
 transición delta del AFD, generando la traza completa de ejecución y
 determinando el veredicto final (Aceptada / Rechazada). También ofrece la
 evaluación en lote de varias cadenas a la vez.
+
+Fase 2: se agrega la simulación directa de un AFND (evaluar_cadena_afnd).
+No sustituye al AFD generado (las opciones 10 y 11 siguen evaluando sobre
+el AFD), sino que se usa para COMPARAR ambos veredictos y comprobar, con
+cada cadena evaluada, que el AFD generado reconoce el mismo lenguaje que
+el AFND original.
 """
 
 from dataclasses import dataclass, field
 
 from colores import exito, error, info
+from conversor import formatear_subconjunto
 
 
 @dataclass
@@ -144,3 +151,95 @@ def imprimir_traza(resultado_evaluacion):
         print(exito(f"Veredicto: {veredicto}"))
     else:
         print(error(f"Veredicto: {veredicto}"))
+
+
+# ---------------------------------------------------------------------------
+# Fase 2: simulación directa del AFND (para comparar con el AFD generado)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PasoAFND:
+    """Un paso de la traza de un AFND: desde un CONJUNTO de estados
+    activos, con un símbolo, se llega a otro conjunto de estados."""
+    conjunto_origen: frozenset
+    simbolo: str
+    conjunto_destino: frozenset
+
+
+@dataclass
+class ResultadoEvaluacionAFND:
+    """Igual que ResultadoEvaluacion, pero la traza es de PasoAFND."""
+    cadena: str
+    traza: list = field(default_factory=list)
+    veredicto: str = "Rechazada"
+    motivo: str = None
+
+
+def evaluar_cadena_afnd(afnd, cadena):
+    """
+    Simula el AFND sobre `cadena` siguiendo TODOS los caminos posibles a la
+    vez, es decir, manteniendo el conjunto de estados activos:
+
+        activos <- {q0}
+        para cada símbolo a de la cadena:
+            si a no pertenece a Sigma -> Rechazada
+            activos <- unión de delta(q, a) para cada q en activos
+        al terminar: Aceptada si activos contiene algún estado de F
+
+    Si en algún momento `activos` queda vacío (∅), ningún camino sigue vivo
+    y la cadena ya no puede aceptarse; aun así se procesan los símbolos
+    restantes para que la traza sea comparable paso a paso con la del AFD
+    generado (donde ∅ es el estado de trampa).
+    """
+    activos = frozenset({afnd.q0})
+    traza = []
+
+    for simbolo in cadena:
+        if simbolo not in afnd.sigma:
+            return ResultadoEvaluacionAFND(
+                cadena=cadena,
+                traza=traza,
+                veredicto="Rechazada",
+                motivo=f"El símbolo '{simbolo}' no pertenece al alfabeto Sigma = {sorted(afnd.sigma)}.",
+            )
+        siguientes = frozenset()
+        for estado in activos:
+            siguientes |= afnd.transicion(estado, simbolo)
+        traza.append(PasoAFND(activos, simbolo, siguientes))
+        activos = siguientes
+
+    veredicto = "Aceptada" if activos & afnd.F else "Rechazada"
+    return ResultadoEvaluacionAFND(cadena=cadena, traza=traza, veredicto=veredicto, motivo=None)
+
+
+def imprimir_traza_afnd(resultado_afnd):
+    """Imprime la traza del AFND como secuencia de conjuntos de estados."""
+    print(info("  Simulación directa sobre el AFND original (conjuntos de estados activos):"))
+    if not resultado_afnd.traza:
+        print(info("    (no se procesó ningún símbolo)"))
+    for paso in resultado_afnd.traza:
+        print(
+            f"    {formatear_subconjunto(paso.conjunto_origen)} "
+            f"--{paso.simbolo}--> {formatear_subconjunto(paso.conjunto_destino)}"
+        )
+    if resultado_afnd.motivo:
+        print(error(f"    Motivo: {resultado_afnd.motivo}"))
+    if resultado_afnd.veredicto == "Aceptada":
+        print(exito(f"  Veredicto del AFND: {resultado_afnd.veredicto}"))
+    else:
+        print(error(f"  Veredicto del AFND: {resultado_afnd.veredicto}"))
+
+
+def imprimir_comparacion(resultado_afd, resultado_afnd):
+    """Muestra si el AFND original y el AFD generado coinciden en el
+    veredicto de una cadena. Devuelve True si coinciden."""
+    coinciden = resultado_afd.veredicto == resultado_afnd.veredicto
+    texto = (
+        f"  Comparación -> AFND: {resultado_afnd.veredicto} | "
+        f"AFD generado: {resultado_afd.veredicto}"
+    )
+    if coinciden:
+        print(exito(texto + "  (COINCIDEN)"))
+    else:
+        print(error(texto + "  (NO COINCIDEN)"))
+    return coinciden

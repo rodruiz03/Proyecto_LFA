@@ -9,8 +9,8 @@ qué módulo invocar según la opción elegida y controla las reglas de acceso
 entre opciones. No contiene lógica de carga, validación, conversión ni
 simulación: esas responsabilidades siguen separadas en cargador.py /
 cargador_afnd.py, validador.py / validador_afnd.py, conversor.py y
-simulador.py, tal como exige el enunciado del proyecto poruqe piden cierta 
-modularidad de que existan de minimo 6 archivos para las actualizaciones
+simulador.py, tal como exige el enunciado del proyecto (separar, al menos,
+carga, análisis sintáctico, validación, conversión y simulación).
 
 Fase 2 — evoluciona el programa de la Fase 1 sin eliminar ninguna de sus
 funciones: un AFD creado o cargado directamente (opciones 1-2) sigue
@@ -150,6 +150,7 @@ class RegistroHistorial:
     traza: list
     motivo: str
     automata: str
+    veredicto_afnd: str = None  # solo si el AFD proviene de un AFND
 
 
 class Historial:
@@ -165,17 +166,20 @@ class Historial:
     def __init__(self):
         self._registros = []
 
-    def agregar(self, afd, resultado):
+    def agregar(self, afd, resultado, resultado_afnd=None):
         """Agrega el ResultadoEvaluacion de simulador.py al historial,
         junto con el nombre del autómata que se usó para obtenerlo. Se
         conserva la traza completa (y el motivo de rechazo, si lo hay)
-        para que la opción 12 pueda mostrarla, no solo el veredicto final."""
+        para que la opción 12 pueda mostrarla, no solo el veredicto final.
+        Si el AFD proviene de una conversión, también se guarda el
+        veredicto de la simulación directa del AFND para la comparación."""
         self._registros.append(RegistroHistorial(
             cadena=resultado.cadena,
             veredicto=resultado.veredicto,
             traza=resultado.traza,
             motivo=resultado.motivo,
             automata=afd.nombre,
+            veredicto_afnd=resultado_afnd.veredicto if resultado_afnd else None,
         ))
 
     def mostrar(self):
@@ -199,6 +203,9 @@ class Historial:
                 print(f"       δ({paso.estado_origen}, {paso.simbolo}) = {paso.estado_destino}")
             if registro.motivo:
                 print(f"       Motivo: {registro.motivo}")
+            if registro.veredicto_afnd is not None:
+                estado = "coinciden" if registro.veredicto_afnd == registro.veredicto else "NO coinciden"
+                print(f"       AFND original: {registro.veredicto_afnd} ({estado} con el AFD generado)")
 
 
 # ---------------------------------------------------------------------------
@@ -221,15 +228,14 @@ def accion_cargar_archivo():
             print(error(f"  - {e}"))
 
     if afd is None:
-        print(error("No se pudo construir el AFD: faltan componentes obligatorios en el archivo."))
+        print(error("No se pudo construir el AFD (revisa los problemas indicados arriba)."))
         return None
 
     if errores:
         print(advertencia(
             f"\nAFD '{afd.nombre}' construido de forma PARCIAL: las líneas con "
-            f"error se descartaron. No se considera un autómata confiable hasta "
-            f"que corrijas el archivo y lo vuelvas a cargar, o lo valides (opción "
-            f"6) y revises con cuidado el resultado."
+            f"error se descartaron. Puedes consultarlo (opción 5), pero la opción 6 "
+            f"no lo dará por válido hasta que corrijas el archivo y lo vuelvas a cargar."
         ))
     else:
         print(exito(f"\nAFD '{afd.nombre}' cargado. Recuerda validarlo (opción 6) antes de evaluar cadenas."))
@@ -252,15 +258,14 @@ def accion_cargar_archivo_afnd():
             print(error(f"  - {e}"))
 
     if afnd is None:
-        print(error("No se pudo construir el AFND: faltan componentes obligatorios en el archivo."))
+        print(error("No se pudo construir el AFND (revisa los problemas indicados arriba)."))
         return None
 
     if errores:
         print(advertencia(
             f"\nAFND '{afnd.nombre}' construido de forma PARCIAL: las líneas con "
-            f"error se descartaron. No se considera un autómata confiable hasta "
-            f"que corrijas el archivo y lo vuelvas a cargar, o lo valides (opción "
-            f"6) y revises con cuidado el resultado."
+            f"error se descartaron. Puedes consultarlo (opción 5), pero la opción 6 "
+            f"no lo dará por válido hasta que corrijas el archivo y lo vuelvas a cargar."
         ))
     else:
         print(exito(f"\nAFND '{afnd.nombre}' cargado. Recuerda validarlo (opción 6) y luego convertirlo (opción 7)."))
@@ -289,8 +294,11 @@ def accion_mostrar_tabla(afd):
     simbolos = sorted(afd.sigma)
     print(titulo(f"\nTabla de transición de '{afd.nombre}' (AFD)"))
 
+    # Los anchos se calculan según el texto más largo para que la tabla no
+    # se desalinee con nombres largos (por ejemplo, el estado q_trampa).
     ancho_estado = max(len(e) for e in estados + ["Estado"]) + 3
-    encabezado = "Estado".ljust(ancho_estado) + "".join(s.center(8) for s in simbolos)
+    ancho_celda = max([len(d) for d in afd.delta.values()] + [len(s) for s in simbolos] + [6]) + 2
+    encabezado = "Estado".ljust(ancho_estado) + "".join(s.center(ancho_celda) for s in simbolos)
     print(encabezado)
     print("-" * len(encabezado))
 
@@ -304,7 +312,7 @@ def accion_mostrar_tabla(afd):
         fila = etiqueta.ljust(ancho_estado)
         for simbolo in simbolos:
             destino = afd.delta.get((estado, simbolo), "-")
-            fila += destino.center(8)
+            fila += destino.center(ancho_celda)
         print(fila)
 
     print(info("  (-> estado inicial, * estado de aceptación, '-' = transición no definida)"))
@@ -388,10 +396,47 @@ def imprimir_analisis_estructural(afd):
         print(exito("  El lenguaje reconocido NO es vacío."))
 
 
+def reportar_errores_de_carga(automata):
+    """
+    Si el autómata se leyó de un archivo que tenía errores (líneas con
+    sintaxis inválida, ε, destinos mal formados, campos repetidos, etc.),
+    lo que quedó en memoria es una construcción PARCIAL: validarla daría
+    un falso "válido". Por eso se reportan esos errores y se marca como no
+    validado. Devuelve True si había errores de carga.
+    """
+    if not automata.errores_carga:
+        return False
+    print(error(
+        f"\nEl autómata NO es válido: el archivo de origen tenía "
+        f"{len(automata.errores_carga)} error(es) de lectura:"
+    ))
+    for e in automata.errores_carga:
+        print(error(f"  - {e}"))
+    automata.validado = False
+    return True
+
+
+def reportar_errores_adicionales(errores):
+    """Cuando ya hubo errores de carga, muestra además los errores
+    estructurales que tenga lo que sí se pudo leer, para que el usuario
+    corrija todo el archivo de una sola vez."""
+    if errores:
+        print(error(f"Además, la estructura leída tiene {len(errores)} error(es):"))
+        for e in errores:
+            print(error(f"  - {e}"))
+    print(advertencia("Corrige el archivo y vuelve a cargarlo (opción 2 o 4)."))
+
+
 def accion_validar_afd(afd):
     """Motor de validación de un AFD (Fase 1): estructura, completitud y,
     si es válido, estado de trampa opcional y análisis estructural."""
+    hubo_errores_carga = reportar_errores_de_carga(afd)
+
     errores, incompletas = validador.validar_estructura(afd)
+
+    if hubo_errores_carga:
+        reportar_errores_adicionales(errores)
+        return
 
     if errores:
         print(error(f"\nEl autómata NO es válido. Se encontraron {len(errores)} error(es):"))
@@ -424,7 +469,13 @@ def accion_validar_afd(afd):
 def accion_validar_afnd(afnd):
     """Motor de validación de un AFND (Fase 2): solo estructura (un AFND
     no tiene concepto de "incompleto")."""
+    hubo_errores_carga = reportar_errores_de_carga(afnd)
+
     errores = validador_afnd.validar_estructura_afnd(afnd)
+
+    if hubo_errores_carga:
+        reportar_errores_adicionales(errores)
+        return
 
     if errores:
         print(error(f"\nEl AFND NO es válido. Se encontraron {len(errores)} error(es):"))
@@ -438,11 +489,15 @@ def accion_validar_afnd(afnd):
     print(info("Usa la opción 7 para convertirlo en un AFD equivalente mediante construcción de subconjuntos."))
 
 
-def accion_validar_automata_cargado(automata_cargado):
+def accion_validar_automata_cargado(automata_cargado, afd_generado):
     """Opción 6: despacha a la validación de AFD o de AFND según el tipo
-    de lo que haya en `automata_cargado`."""
+    de lo que haya en `automata_cargado`. Si ya existe un AFD generado por
+    conversión, también se vuelve a validar con el motor de la Fase 1."""
     if isinstance(automata_cargado, AFND):
         accion_validar_afnd(automata_cargado)
+        if afd_generado is not None:
+            print(titulo("\nAFD generado a partir de este AFND:"))
+            verificar_afd_generado(afd_generado)
     else:
         accion_validar_afd(automata_cargado)
 
@@ -466,36 +521,87 @@ def accion_convertir(automata_cargado):
 
     afd_generado, tabla_equivalencias = conversor.construir_afd_desde_afnd(automata_cargado)
     print(exito(f"\nConversión completada: se generaron {len(afd_generado.Q)} macroestado(s)."))
-    print(info("Usa la opción 8 para ver la tabla de equivalencias, o la 9 para ver la tabla del AFD generado."))
+    if not verificar_afd_generado(afd_generado):
+        return None, None
+    print(info("Usa la opción 8 para ver la tabla de equivalencias, o la 9 para ver el AFD generado."))
     return afd_generado, tabla_equivalencias
 
 
-def accion_mostrar_equivalencias(tabla_equivalencias):
+def verificar_afd_generado(afd_generado):
+    """
+    Pasa el AFD generado por el MISMO motor de validación de la Fase 1
+    (validador.validar_estructura), en vez de suponer que es correcto: así
+    se comprueba explícitamente que es determinista y completo (exactamente
+    un destino por cada par (macroestado, símbolo)). Luego muestra su
+    análisis estructural. Devuelve True si es válido.
+    """
+    errores, incompletas = validador.validar_estructura(afd_generado)
+    if errores or incompletas:
+        print(error("El AFD generado no pasó la validación determinista:"))
+        for e in errores:
+            print(error(f"  - {e}"))
+        for estado, simbolo in incompletas:
+            print(error(f"  - δ({estado}, {simbolo}) no está definida"))
+        afd_generado.validado = False
+        return False
+    afd_generado.validado = True
+    print(exito("Validación determinista del AFD generado: válido, determinista y completo."))
+    imprimir_analisis_estructural(afd_generado)
+    return True
+
+
+def accion_mostrar_equivalencias(tabla_equivalencias, afd_generado):
     """Opción 8: relaciona cada macroestado del AFD generado con el
-    subconjunto de estados del AFND que representa."""
+    subconjunto de estados del AFND que representa, e indica cuál es el
+    inicial, cuáles son finales (contienen al menos un estado final del
+    AFND) y cuál es el estado de trampa (∅), si se alcanzó."""
     print(titulo("\nTabla de equivalencias de macroestados"))
-    ancho = max(len(etiqueta) for etiqueta in tabla_equivalencias) + 3
-    encabezado = "Macroestado".ljust(ancho) + "Conjunto de estados del AFND"
+    ancho = max([len(etiqueta) for etiqueta in tabla_equivalencias] + [len("Macroestado")]) + 3
+    textos = {e: conversor.formatear_subconjunto(c) for e, c in tabla_equivalencias.items()}
+    ancho_conjunto = max([len(t) for t in textos.values()] + [len("Conjunto de estados del AFND")]) + 3
+    encabezado = "Macroestado".ljust(ancho) + "Conjunto de estados del AFND".ljust(ancho_conjunto) + "Observación"
     print(encabezado)
     print("-" * len(encabezado))
     for etiqueta, subconjunto in tabla_equivalencias.items():
-        print(etiqueta.ljust(ancho) + conversor.formatear_subconjunto(subconjunto))
+        observaciones = []
+        if etiqueta == afd_generado.q0:
+            observaciones.append("inicial")
+        if etiqueta in afd_generado.F:
+            observaciones.append("final")
+        if not subconjunto:
+            observaciones.append("estado de trampa (∅)")
+        print(etiqueta.ljust(ancho) + textos[etiqueta].ljust(ancho_conjunto) + ", ".join(observaciones))
 
 
 # ---------------------------------------------------------------------------
 # Acciones del menú — opciones 10 y 11 (evaluación)
 # ---------------------------------------------------------------------------
 
-def accion_evaluar_cadena(afd, historial):
+def evaluar_y_mostrar(afd, cadena, historial, afnd_original=None):
+    """Evalúa una cadena sobre el AFD, imprime su traza y la guarda en el
+    historial. Si el AFD proviene de un AFND, también simula el AFND
+    original y compara ambos veredictos. Devuelve (resultado, coinciden),
+    donde coinciden es None si no hay AFND con qué comparar."""
+    resultado = simulador.evaluar_cadena(afd, cadena)
+    simulador.imprimir_traza(resultado)
+    resultado_afnd = None
+    coinciden = None
+    if afnd_original is not None:
+        resultado_afnd = simulador.evaluar_cadena_afnd(afnd_original, cadena)
+        simulador.imprimir_traza_afnd(resultado_afnd)
+        coinciden = simulador.imprimir_comparacion(resultado, resultado_afnd)
+    historial.agregar(afd, resultado, resultado_afnd)
+    return resultado, coinciden
+
+
+def accion_evaluar_cadena(afd, historial, afnd_original=None):
     """Pide una cadena, la evalúa, imprime su traza y la agrega al
     historial del autómata actual."""
     cadena = input("\nCadena a evaluar (deja vacío para la cadena λ): ")
-    resultado = simulador.evaluar_cadena(afd, cadena)
-    simulador.imprimir_traza(resultado)
-    historial.agregar(afd, resultado)
+    evaluar_y_mostrar(afd, cadena, historial, afnd_original)
 
 
-def accion_evaluar_archivo(afd, historial):
+def accion_evaluar_archivo(afd, historial, afnd_original=None):
     """Evaluación por lote. Lee un archivo con una cadena por línea,
     evalúa cada una y agrega todas al historial, mostrando además un
     resumen final."""
@@ -510,15 +616,58 @@ def accion_evaluar_archivo(afd, historial):
         print(error(f"No se pudo abrir el archivo '{ruta}': {e}"))
         return
 
-    resultados, resumen = simulador.evaluar_lote(afd, cadenas)
-    for resultado in resultados:
-        simulador.imprimir_traza(resultado)
-        historial.agregar(afd, resultado)
+    coincidencias = 0
+    for cadena in cadenas:
+        _, coinciden = evaluar_y_mostrar(afd, cadena, historial, afnd_original)
+        if coinciden:
+            coincidencias += 1
+    _, resumen = simulador.evaluar_lote(afd, cadenas)
 
     print(titulo("\nResumen de evaluación por lote:"))
     print(f"  Total evaluadas: {resumen['total']}")
     print(exito(f"  Aceptadas: {resumen['aceptadas']}"))
     print(error(f"  Rechazadas: {resumen['rechazadas']}"))
+    if afnd_original is not None:
+        texto = f"  Comparación AFND vs AFD generado: {coincidencias}/{resumen['total']} cadena(s) coinciden"
+        if coincidencias == resumen['total']:
+            print(exito(texto + " -> ambos reconocen las mismas cadenas."))
+        else:
+            print(error(texto + "."))
+
+
+# ---------------------------------------------------------------------------
+# Acciones del menú — opción 14 (cargar o crear otro autómata)
+# ---------------------------------------------------------------------------
+
+def accion_cargar_o_crear_otro():
+    """Opción 14: después de descartar el autómata actual, permite elegir
+    de inmediato cómo obtener el siguiente, sin reiniciar el programa.
+    Devuelve el nuevo autómata, o None si el usuario decide volver al menú."""
+    print(" 1. Crear un AFD manualmente")
+    print(" 2. Cargar un AFD desde archivo .txt")
+    print(" 3. Crear un AFND manualmente")
+    print(" 4. Cargar un AFND desde archivo .txt")
+    print(" 0. Volver al menú principal")
+    acciones = {
+        "1": accion_crear_manual,
+        "2": accion_cargar_archivo,
+        "3": accion_crear_manual_afnd,
+        "4": accion_cargar_archivo_afnd,
+    }
+    while True:
+        texto = input("¿Qué deseas hacer? (0-4): ").strip()
+        if texto == "0":
+            print(info("Usa las opciones 1 a 4 cuando quieras cargar un nuevo autómata."))
+            return None
+        if texto in acciones:
+            return acciones[texto]()
+        print(error("Opción inválida: ingresa un número entre 0 y 4."))
+
+
+def afnd_original(automata_cargado):
+    """Devuelve el AFND cargado si lo hay (para comparar su simulación con
+    la del AFD generado en las opciones 10 y 11), o None si es un AFD."""
+    return automata_cargado if isinstance(automata_cargado, AFND) else None
 
 
 # ---------------------------------------------------------------------------
@@ -581,7 +730,7 @@ def main():
 
         elif opcion == 6:
             if hay_automata_cargado(automata_cargado):
-                accion_validar_automata_cargado(automata_cargado)
+                accion_validar_automata_cargado(automata_cargado, afd_generado)
 
         elif opcion == 7:
             nuevo_afd_generado, nueva_tabla = accion_convertir(automata_cargado)
@@ -593,23 +742,24 @@ def main():
             if tabla_equivalencias is None:
                 print(error("Todavía no se ha convertido ningún AFND. Usa la opción 7 primero."))
             else:
-                accion_mostrar_equivalencias(tabla_equivalencias)
+                accion_mostrar_equivalencias(tabla_equivalencias, afd_generado)
 
         elif opcion == 9:
             if afd_generado is None:
                 print(error("Todavía no se ha convertido ningún AFND. Usa la opción 7 primero."))
             else:
+                accion_mostrar_definicion(afd_generado)
                 accion_mostrar_tabla(afd_generado)
 
         elif opcion == 10:
             afd = obtener_afd_operable(automata_cargado, afd_generado)
             if afd is not None:
-                accion_evaluar_cadena(afd, historial)
+                accion_evaluar_cadena(afd, historial, afnd_original(automata_cargado))
 
         elif opcion == 11:
             afd = obtener_afd_operable(automata_cargado, afd_generado)
             if afd is not None:
-                accion_evaluar_archivo(afd, historial)
+                accion_evaluar_archivo(afd, historial, afnd_original(automata_cargado))
 
         elif opcion == 12:
             historial.mostrar()
@@ -624,7 +774,8 @@ def main():
             afd_generado = None
             tabla_equivalencias = None
             historial = Historial()
-            print(info("\nAutómata actual descartado. Usa las opciones 1 a 4 para cargar uno nuevo."))
+            print(info("\nAutómata actual descartado junto con su AFD generado, macroestados e historial."))
+            automata_cargado = accion_cargar_o_crear_otro()
 
         elif opcion == 15:
             print(titulo("\n¡Hasta luego!"))

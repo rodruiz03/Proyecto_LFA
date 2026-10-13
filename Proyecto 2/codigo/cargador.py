@@ -1,7 +1,8 @@
 """
 cargador.py
 -----------
-Funcionalidad 1: Carga del AFD, no se actualiza al final se crea otro .py
+Funcionalidad 1: Carga del AFD (Fase 1). La carga del AFND (Fase 2) vive en
+cargador_afnd.py, que reutiliza las funciones auxiliares de este módulo.
 
 Contiene dos formas de construir un objeto AFD:
   1. crear_afd_manual()          ingreso interactivo por consola.
@@ -36,6 +37,8 @@ from colores import titulo, info, exito, error
 #   ...
 # ---------------------------------------------------------------------------
 PATRON_NOMBRE = re.compile(r'^NOMBRE=(.+)$')
+# TIPO= es opcional en un archivo de AFD; si aparece, debe decir AFD.
+PATRON_TIPO = re.compile(r'^TIPO=(.+)$')
 PATRON_ESTADOS = re.compile(r'^ESTADOS=(.+)$')
 PATRON_ALFABETO = re.compile(r'^ALFABETO=(.+)$')
 PATRON_INICIAL = re.compile(r'^INICIAL=(.+)$')
@@ -235,7 +238,7 @@ def cargar_afd_desde_archivo(ruta):
     delta = {}
     dentro_de_transiciones = False
     transiciones_vistas = set()  # detecta (origen, simbolo) repetidos -> AFND
-    campos_vistos = set()  # detecta NOMBRE/ESTADOS/ALFABETO/INICIAL/FINALES repetidos
+    campos_vistos = set()  # detecta NOMBRE/TIPO/ESTADOS/ALFABETO/INICIAL/FINALES repetidos
 
     def _es_declaracion_nueva(campo, numero_linea):
         """
@@ -264,6 +267,13 @@ def cargar_afd_desde_archivo(ruta):
         if dentro_de_transiciones:
             m = PATRON_TRANSICION.match(linea)
             if not m:
+                if '|' in linea:
+                    errores.append(
+                        f"Línea {numero_linea}: la transición '{linea}' tiene varios "
+                        f"destinos separados por '|' -> eso corresponde a un AFND; "
+                        f"cárgalo con la opción 4."
+                    )
+                    continue
                 errores.append(
                     f"Línea {numero_linea}: transición con formato inválido "
                     f"-> '{linea}'. Se esperaba origen,simbolo,destino."
@@ -288,6 +298,17 @@ def cargar_afd_desde_archivo(ruta):
         if m:
             if _es_declaracion_nueva('NOMBRE', numero_linea):
                 nombre = m.group(1).strip()
+            continue
+
+        m = PATRON_TIPO.match(linea)
+        if m:
+            if _es_declaracion_nueva('TIPO', numero_linea):
+                tipo = m.group(1).strip().upper()
+                if tipo != 'AFD':
+                    errores.append(
+                        f"Línea {numero_linea}: el archivo declara TIPO={tipo}, pero se "
+                        f"intentó cargar como AFD. Usa la opción 4 para cargar un AFND."
+                    )
             continue
 
         m = PATRON_ESTADOS.match(linea)
@@ -355,4 +376,8 @@ def cargar_afd_desde_archivo(ruta):
         return None, errores
 
     afd = AFD(nombre, Q, sigma, delta, q0, F)
+    # Se guardan los errores de lectura en el propio autómata: si el archivo
+    # tenía líneas inválidas, el AFD quedó construido de forma parcial y la
+    # opción 6 se niega a marcarlo como válido.
+    afd.errores_carga = list(errores)
     return afd, errores

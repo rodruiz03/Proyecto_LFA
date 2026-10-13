@@ -9,6 +9,10 @@ A diferencia de validador.py (AFD), aquí NO existe el concepto de
 simplemente se interpreta como una transición hacia ∅ (ver
 AFND.transicion en automata.py), lo cual es válido en un AFND. Por eso
 esta función solo puede devolver errores estructurales graves.
+
+Se creó como un módulo aparte de validador.py para no modificar el
+validador de la Fase 1 (que sigue usándose sin cambios para el AFD
+cargado directamente y para el AFD generado por la conversión).
 """
 
 
@@ -45,7 +49,3 @@ def validar_estructura_afnd(afnd):
             )
 
     return errores
-
-#Se creo al final mejor otro archivo .py para nomas llamarlo al main mas que nada
-#Por simpleza y para que puedieramos reciclar codigo de validador
-#ademas del cambio de estructura

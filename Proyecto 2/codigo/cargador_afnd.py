@@ -9,9 +9,9 @@ reutilizan de cargador.py las piezas que no dependen de esa diferencia
 (separar listas, pedir conjuntos, normalizar rutas de archivo, patrón de
 identificador, símbolos épsilon prohibidos) en vez de duplicarlas.
 
-Se hizo de esta forma para que fuera mas facil de modelarlo debidoa  que 
-en este caso es dificil poder hacerlo dado que tiene uno o varios estados por
-eso se tomo la desicion de hacer otro .py para que fuera mas facil
+Se decidió crear un módulo aparte, en lugar de ampliar cargador.py, porque
+la línea de transición de un AFND tiene una gramática distinta (varios
+destinos o ∅) y así la carga del AFD de la Fase 1 queda intacta.
 """
 
 import re
@@ -32,8 +32,6 @@ from colores import titulo, info, exito, error
 # de cabecera (NOMBRE, ESTADOS, ALFABETO, INICIAL, FINALES) es idéntico al
 # del AFD; solo cambia la línea de transición, cuyo destino puede traer
 # varios estados separados por "|", o el símbolo ∅ para "sin destino".
-#Se hizo de esta forma porque hay algunos simbolos que podrian entrar que 
-#podrian llegar a estar mal
 # ---------------------------------------------------------------------------
 PATRON_NOMBRE = re.compile(r'^NOMBRE=(.+)$')
 PATRON_TIPO = re.compile(r'^TIPO=(.+)$')
@@ -42,8 +40,16 @@ PATRON_ALFABETO = re.compile(r'^ALFABETO=(.+)$')
 PATRON_INICIAL = re.compile(r'^INICIAL=(.+)$')
 PATRON_FINALES = re.compile(r'^FINALES=(.*)$')
 PATRON_ENCABEZADO_TRANSICIONES = re.compile(r'^TRANSICIONES:$')
-# origen,simbolo,destino1|destino2|...  (o ∅ / vacío para "sin destino")
+# origen,simbolo,destinos  donde "destinos" es el resto de la línea; su
+# forma exacta se valida después con PATRON_DESTINOS_AFND.
 PATRON_TRANSICION_AFND = re.compile(r'^([A-Za-z0-9_]+)\s*,\s*([^\s,]+)\s*,\s*(.*)$')
+# Columna de destinos válida:
+#   - ∅ o vacío                       -> transición sin destinos
+#   - q1                              -> un destino
+#   - q0|q1|q2 (espacios opcionales)  -> varios destinos
+# Rechaza separadores sobrantes ("q0|", "q0||q1"), comas ("q0,q1") y
+# cualquier nombre de estado que no sea un identificador.
+PATRON_DESTINOS_AFND = re.compile(r'^(?:∅|[A-Za-z0-9_]+(?:\s*\|\s*[A-Za-z0-9_]+)*)?$')
 
 # Tokens que representan "sin destino" (conjunto vacío) en la columna de
 # destino de una transición.
@@ -55,11 +61,23 @@ def _separar_destinos(texto):
     Convierte la columna de destino de una transición ("q0|q1", "∅" o "")
     en un frozenset de nombres de estado. "∅" y la cadena vacía representan
     una transición sin destinos, no un error.
+
+    Devuelve None si el texto no respeta PATRON_DESTINOS_AFND, para que
+    quien llama reporte el error de sintaxis.
     """
     texto = texto.strip()
+    if not PATRON_DESTINOS_AFND.match(texto):
+        return None
     if texto in TOKENS_SIN_DESTINO:
         return frozenset()
-    return frozenset(_separar_lista(texto.replace('|', ',')))
+    return frozenset(d.strip() for d in texto.split('|'))
+
+
+def _destinos_repetidos(texto):
+    """Devuelve los estados que aparecen más de una vez en la columna de
+    destinos (por ejemplo "q0|q0"), que se reportan como error."""
+    partes = [d.strip() for d in texto.split('|') if d.strip() not in TOKENS_SIN_DESTINO]
+    return sorted({d for d in partes if partes.count(d) > 1})
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +153,16 @@ def _pedir_transiciones_afnd(Q, sigma):
             ))
             continue
         destinos = _separar_destinos(texto_destino)
+        if destinos is None:
+            print(error(
+                f"Destinos inválidos '{texto_destino}'. Usa nombres de estado "
+                f"separados por '|' (ej. q0|q1), o ∅ para ningún destino."
+            ))
+            continue
+        repetidos = _destinos_repetidos(texto_destino)
+        if repetidos:
+            print(error(f"Destinos repetidos en la misma transición: {repetidos}"))
+            continue
         invalidos = [d for d in destinos if d not in Q]
         if invalidos:
             print(error(f"Los siguientes destinos no pertenecen a Q: {sorted(invalidos)}"))
@@ -152,8 +180,7 @@ def _pedir_transiciones_afnd(Q, sigma):
 def cargar_afnd_desde_archivo(ruta):
     """
     Lee y parsea un archivo de definición de AFND (ver formato en el
-    enunciado de la Fase 2). Este formato lo dio el ingeniero
-    Igual que cargar_afd_desde_archivo, nunca
+    enunciado de la Fase 2). Igual que cargar_afd_desde_archivo, nunca
     lanza una excepción por un archivo mal formado: acumula errores y
     sigue leyendo.
 
@@ -220,6 +247,19 @@ def cargar_afnd_desde_archivo(ruta):
                 )
                 continue
             destinos = _separar_destinos(texto_destino)
+            if destinos is None:
+                errores.append(
+                    f"Línea {numero_linea}: destinos inválidos '{texto_destino.strip()}'. "
+                    f"Se esperaban estados separados por '|' (ej. q0|q1) o ∅."
+                )
+                continue
+            repetidos = _destinos_repetidos(texto_destino)
+            if repetidos:
+                errores.append(
+                    f"Línea {numero_linea}: destinos repetidos en la misma "
+                    f"transición: {repetidos}."
+                )
+                continue
             delta[(origen, simbolo)] = destinos
             continue
 
@@ -305,4 +345,7 @@ def cargar_afnd_desde_archivo(ruta):
         return None, errores
 
     afnd = AFND(nombre, Q, sigma, delta, q0, F)
+    # Igual que en cargador.py: un AFND leído con errores quedó construido
+    # de forma parcial y la opción 6 no lo dará por válido.
+    afnd.errores_carga = list(errores)
     return afnd, errores

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="AFND-Proyecto2" version="24.0.0" type="device">
+<diagram id="opcion15id" name="15. Salir"><mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connectable="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="520" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="n1" value="Inicio:&#10;Salir" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1"><mxGeometry x="40" y="40" width="200" height="60" as="geometry"/></mxCell>
+<mxCell id="n2" value="Mostrar: &#x27;¡Hasta luego!&#x27;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;" vertex="1" parent="1"><mxGeometry x="40" y="150" width="300" height="60" as="geometry"/></mxCell>
+<mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#333333;fontSize=11;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="n3" value="Terminar el bucle principal (break)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;align=center;" vertex="1" parent="1"><mxGeometry x="40" y="260" width="300" height="60" as="geometry"/></mxCell>
+<mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#333333;fontSize=11;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="n4" value="Fin del programa" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1"><mxGeometry x="40" y="370" width="220" height="60" as="geometry"/></mxCell>
+<mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#333333;fontSize=11;" edge="1" parent="1" source="n3" target="n4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="leg_title" value="Simbologia" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#666666;" vertex="1" parent="1"><mxGeometry x="680" y="10" width="220" height="20" as="geometry"/></mxCell>
+<mxCell id="leg_s0" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1"><mxGeometry x="680" y="40" width="50" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_t0" value="Inicio / Fin" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#666666;" vertex="1" parent="1"><mxGeometry x="740" y="40" width="220" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_s1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;align=center;" vertex="1" parent="1"><mxGeometry x="680" y="78" width="50" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_t1" value="Proceso" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#666666;" vertex="1" parent="1"><mxGeometry x="740" y="78" width="220" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_s2" value="" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;" vertex="1" parent="1"><mxGeometry x="680" y="116" width="50" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_t2" value="Decision" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#666666;" vertex="1" parent="1"><mxGeometry x="740" y="116" width="220" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_s3" value="" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;" vertex="1" parent="1"><mxGeometry x="680" y="154" width="50" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_t3" value="Entrada / Salida" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#666666;" vertex="1" parent="1"><mxGeometry x="740" y="154" width="220" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_s4" value="" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=center;" vertex="1" parent="1"><mxGeometry x="680" y="192" width="50" height="28" as="geometry"/></mxCell>
+<mxCell id="leg_t4" value="Subproceso (otra pagina)" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#666666;" vertex="1" parent="1"><mxGeometry x="740" y="192" width="220" height="28" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram>
+</mxfile>
